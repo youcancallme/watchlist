@@ -20,12 +20,35 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # 关闭对模型修改的
 db = SQLAlchemy(app)
 
 
+@app.context_processor #模板上下文处理函数，可以在任意模板中使用user变量
+def inject_user():  # 函数名可以随意修改
+    user = User.query.first()
+    return dict(user=user)  # 需要返回字典，等同于 return {'user': user}
+
+
+errorDatas = [
+        {'code': 404, 'reason': '请求的资源不存在'},
+        {'code': 400, 'reason': '请求错误，服务器无法理解'},
+        {'code': 401, 'reason': '未授权，需要进行身份验证'},
+        {'code': 403, 'reason': '禁止访问，服务器拒绝请求'},
+        {'code': 500, 'reason': '服务器内部错误'},
+        {'code': 503, 'reason': '服务不可用，服务器暂时过载或维护'},
+    ]
+
+@app.errorhandler(404)  # 传入要处理的错误代码
+def page_not_found(e):  # 接受异常对象作为参数
+    return render_template('error.html',code=404, reason='请求的资源不存在'), 404  # 返回模板和状态码
+
+@app.errorhandler(400)  # 传入要处理的错误代码
+def page_not_found(e):  # 接受异常对象作为参数
+    return render_template('error.html',code=400, reason='请求错误，服务器无法理解'), 400  # 返回模板和状态码
+
 @app.route('/')
 def index():#主页
     #return render_template('index.html', name=name, movies=movies)
     user = User.query.first()  # 读取用户记录
     movies = Movie.query.all()  # 读取所有电影记录
-    return render_template('index.html', user=user, movies=movies)
+    return render_template('index.html',movies=movies)
 
 @app.route('/user/<name>')
 def user_page(name):
@@ -52,6 +75,11 @@ class Movie(db.Model):  # 表名将会是 movie
     id = db.Column(db.Integer, primary_key=True)  # 主键
     title = db.Column(db.String(60))  # 电影标题
     year = db.Column(db.String(4))  # 电影年份
+
+# class Errorcode(db.Model):  # 表名将会是 errrorcode
+#     id = db.Column(db.Integer, primary_key=True)  # 主键
+#     code = db.Column(db.String(60))  # 错误码
+#     reason = db.Column(db.String(60))  # 原因
 
 @app.cli.command()
 def forge():
@@ -82,6 +110,8 @@ def forge():
     db.session.commit()
     click.echo('Done.')
 
+
+
 @app.cli.command() # 注册为命令，可以传入 name 参数来自定义命令
 @click.option('--drop', is_flag=True, help='Create after drop.')  # 设置选项
 def initdb(drop):
@@ -90,3 +120,5 @@ def initdb(drop):
         db.drop_all()
     db.create_all()
     click.echo('Initialized database.')  # 输出提示信息
+
+
